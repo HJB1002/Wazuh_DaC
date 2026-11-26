@@ -1,0 +1,125 @@
+<!-- Local rules -->
+
+<!-- Modify it at your will. -->
+<!-- Copyright (C) 2015, Wazuh Inc. -->
+
+<!-- Example -->
+<group name="local,syslog,sshd,">
+
+  <!--
+  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
+  -->
+  <rule id="100001" level="5">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>sshd: authentication failed from IP 1.1.1.1.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+  
+<rule id="100004" level="10" timeframe="60">
+  <if_matched_sid>100002</if_matched_sid>
+  <if_sid>60118</if_sid>
+  <same_field>win.eventdata.ipAddress</same_field>
+  <description>Successful login after multiple failed login attempts</description>
+</rule>
+
+  <rule id="100003" level="15">
+     <if_sid>60118</if_sid>
+     <if_sid>100002</if_sid>
+    <description>Login successfully after multiple attempts</description>
+</rule>
+
+<rule id="100013" level="7">
+    <if_sid>31100,31108</if_sid>
+    <url>%27+OR+%27|%27+AND+%27|%27+or+%27|%27+and+%27</url>
+    <url>%27+--|%27--|%27+%23|%27#</url>
+    <description>SQL injection attempt: authentication bypass (tautology + comment injection).</description>
+</rule>
+
+<rule id="100008" level="12">
+  <if_sid>554</if_sid>
+  <field name="file" type="pcre2">(?i)\.(cmd|bat|ps1|py|sh|dll)$</field>
+  <description>Suspicious script/executable file added to monitored directory: $(file)</description>
+  <group>persistence,suspicious_file,</group>
+</rule> 
+
+</group>
+
+
+<group name="failed_authentication">
+<rule id="100002" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>60122</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Multiple failed login attemped in 2 minutes (from event ID 60122)</description>
+  </rule>
+</group>
+
+
+<group name="webshell">
+<rule id="100300" level="15">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)w3wp\.exe</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)cmd\.exe</field>
+    <description>Webshell detected: cmd.exe spawned from IIS worker process (w3wp.exe)</description>
+    <group>webshell,attack,sysmon,</group>
+  </rule>
+</group>
+
+<group name="file_upload">
+ <!-- Rule cơ bản - mọi lần upload -->
+  <rule id="100400" level="5">
+    <decoded_as>fileupload</decoded_as>
+    <description>FileUpload: File $(file) uploaded from $(srcip) (size $(size) bytes)</description>
+  </rule>
+
+  <!-- Alert nếu upload file nguy hiểm -->
+  <rule id="100401" level="12">
+    <if_sid>100400</if_sid>
+    <field name="file">\.aspx$|\.asp$|\.php$|\.jsp$|\.exe$|\.bat$|\.ps1$|\.dll$|\.cmd$</field>
+    <description>FileUpload ALERT: Dangerous file uploaded - $(file) from $(srcip)</description>
+  </rule>
+</group>
+
+<group name="money_transfer,">
+  <rule id="100500" level="3">
+    <field name="from_user">\.+</field>
+    <field name="to_user">\.+</field>
+    <description>Money transfer from $(from_user) to $(to_user), amount: $(amount) </description>
+  </rule>
+
+  <rule id="100501" level="12">
+    <if_sid>100500</if_sid>
+    <field name="amount" type="pcre2">^[1-9]\d{8,}(\.\d+)?$</field>
+    <description> High amount money transfer detected, equal to or exceed 100,000,000: from $(from_user) to $(to_user), amount: $(amount) </description>
+  </rule>
+</group>
+  <!--  
+    bắt đầu ^ và kết thúc $ để regex hợp với toàn bộ chuổi giá trị của field amount, tránh match nhầm một phân số
+[1-9] kí tự đâu tiên phải từ 1 tới 9 để là một con số có nghĩa
+\d{8,} sau kí tự đầu tiên phải tối thiểu là 8 con số có dấu , có thể lớn hơn 8 con số
+(\.\d+)? cho phép sau đó có phần thập phân như là .XXX 
+chú ý dấu space trong chuỗi regex, nếu thừa thì sẽ tính là cần match một dấu space ở vị trí đó
+    -->
+    
+<group name="audit_rule">
+<rule id="100602" level="13">
+  <if_sid>80792</if_sid>
+  <field name="audit.key">process_execution</field>
+  <field name="audit.command">bash</field>
+  <description>Auditd: bash spawned via process_execution - possible reverse shell</description>
+  <mitre>
+    <id>T1059.004</id>
+  </mitre>
+</rule>
+
+<rule id="100603" level="13">
+  <if_sid>100602</if_sid>
+  <field name="audit.key">process_execution</field>
+  <field name="audit.command">bash</field>
+  <regex type="pcre2">tty=.none.</regex>
+  <description>Auditd: bash spawned without TTY - possible reverse shell</description>
+  <mitre>
+    <id>T1059.004</id>
+  </mitre>
+</rule>
+</group>

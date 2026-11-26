@@ -1,0 +1,48 @@
+<group name="sysmon-linux">
+
+<rule id="100700" level="0">
+  <decoded_as>sysmon-linux</decoded_as>
+  <description>Sysmon for Linux events</description>
+</rule>
+
+<!-- Rule 1: Chương trình không phải shell chuẩn spawn bash interactive -->
+<rule id="100701" level="12">
+  <if_sid>100700</if_sid>
+  <field name="system.eventId">^1$</field>
+  <field name="eventdata.image">bash$|/bin/bash$|/usr/bin/bash$</field>
+  <field name="eventdata.commandLine">-i</field>
+  <!-- Loại trừ các parent hợp lệ -->
+  <field name="eventdata.parentImage" negate="yes">
+    bash$|/bin/bash$|/usr/bin/bash$|
+    /bin/sh$|/usr/bin/sh$|/bin/dash$|/usr/bin/dash$|
+    /usr/bin/sudo$|/usr/bin/su$|
+    systemd$|gnome-terminal|gdm-|sshd$|tmux$|screen$|
+    /usr/lib/systemd/|/lib/systemd/|
+    /usr/libexec/
+  </field>
+  <!-- Ưu tiên bắt parent nằm ngoài thư mục hệ thống -->
+  <field name="eventdata.parentImage">^/home/|^/tmp/|^/opt/|^/var/tmp/</field>
+  <description>Possible reverse shell: non-shell process spawned interactive bash ($(eventdata.parentImage) → $(eventdata.image))</description>
+</rule>
+
+<!-- Rule 2: Outbound connection -->
+<rule id="100702" level="10">
+  <if_sid>100700</if_sid>
+  <field name="system.eventId">^3$</field>
+  <field name="eventdata.destinationPort" negate="yes">^22$|^80$|^443$|^53$|^123$|^25$|^587$|^993$|^995$|^1514$|^1515$|^5353$|^8082$</field>
+  <field name="eventdata.destinationIp" negate="yes">^127\.|^192\.168\.33\.|^0\.0\.0\.0$</field>
+  <description>Suspicious outbound connection: $(eventdata.image) → $(eventdata.destinationIp):$(eventdata.destinationPort)</description>
+</rule>
+<!-- Rule 3: bash được khởi tạo từ thư mục của app Java -->
+<rule id="100703" level="12">
+  <if_sid>100700</if_sid>
+  <field name="system.eventId">^1$</field>
+  <field name="eventdata.image">bash$|/bin/bash$|/usr/bin/bash$|/bin/sh$|/usr/bin/sh$|/bin/dash$|/usr/bin/dash$</field>
+  <field name="eventdata.commandLine">-c </field> <!-- -c đặt trưng khi sử dụng Runtime.exec -->
+  <!-- Loại trừ lệnh khởi tạo shell bình thường -->
+  <field name="eventdata.commandLine" negate="yes">lesspipe|dircolors|locale-check</field>
+  <field name="eventdata.currentDirectory">/home/spring/Desktop/local-app|/home/spring/Desktop</field>
+  <description>Possible RCE via SpEL Injection: shell spawned from app directory ($(eventdata.image) - $(eventdata.commandLine))</description>
+</rule>
+
+</group>
