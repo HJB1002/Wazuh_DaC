@@ -1,4 +1,13 @@
-/*
-!/.gitignore
-!/decoders/
-!/rules/
+# Ignore the following files
+/client.keys
+/internal_options.conf
+/local_internal_options.conf
+/ossec.conf
+/sslmanager.cert
+/sslmanager.key
+/localtime
+
+# Ignore the following directories
+/lists/
+/rootcheck/
+/shared/
