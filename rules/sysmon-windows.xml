@@ -1,1 +1,7 @@
 <!-- Đây là ruleset dành cho các sự kiện sysmon dành cho linux -->
+<group name="windows,sysmon,">
+  <rule id="100100" level="3">
+    <if_sid>61603</if_sid>
+    <description>Test rule: Sysmon Event 1 on Windows</description>
+  </rule>
+</group>
