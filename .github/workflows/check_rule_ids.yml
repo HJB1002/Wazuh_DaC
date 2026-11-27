@@ -1,0 +1,30 @@
+name: Check Rule ID Conflicts
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    # paths: ["**.xml"] # Bạn có thể bỏ comment dòng này nếu chỉ muốn chạy khi có file xml thay đổi
+
+jobs:
+  check-rule-ids:
+    # Chuyển sang self-hosted runner
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Bắt buộc phải có để git diff và git show hoạt động chính xác
+
+      # Setup Python (vẫn giữ nguyên để đảm bảo môi trường ổn định)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Fetch main branch
+        run: git fetch origin main
+
+      # Cập nhật đường dẫn trỏ tới thư mục scripts
+      - name: Run rule ID conflict checker
+        run: python3 scripts/check_rule_ids.py
