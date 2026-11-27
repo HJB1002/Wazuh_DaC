@@ -2,6 +2,6 @@
 <group name="windows,sysmon,">
   <rule id="100100" level="3">
     <if_sid>61603</if_sid>
-    <description>This rule right here is just for testing ruleset auto update</description>
+    <description>This rule righ here is just for checking rule ID collision workflow</description>
   </rule>
 </group>
