@@ -12,7 +12,6 @@ def run_git_command(args):
 
 def get_changed_rule_files():
     try:
-        # So sánh nhánh hiện tại (HEAD) với nhánh main trên remote (origin/main)
         output = run_git_command(["git", "diff", "--name-status", "origin/main...HEAD"])
         changed_files = []
         for line in output.strip().splitlines():
@@ -20,7 +19,6 @@ def get_changed_rule_files():
             if len(parts) != 2:
                 continue
             status, file_path = parts
-            # Chỉ kiểm tra các file trong thư mục rules/ và có đuôi .xml
             if file_path.startswith("rules/") and file_path.endswith(".xml"):
                 changed_files.append((status, Path(file_path)))
         return changed_files
@@ -31,7 +29,6 @@ def get_changed_rule_files():
 def extract_rule_ids_from_xml(content):
     ids = []
     try:
-        # Bọc các thẻ rule bằng một thẻ root giả để tránh lỗi parse khi file có nhiều root elements
         wrapped = f"<root>{content}</root>"
         root = ET.fromstring(wrapped)
         for rule in root.findall(".//rule"):
@@ -79,8 +76,12 @@ def print_conflicts(conflicting_ids, rule_id_to_files):
             print(f"    - {f}")
 
 def main():
-    # Đảm bảo script đang chạy ở thư mục gốc của repository
-    repo_root = Path(__file__).resolve().parent.parent
+    # SỬA LỖI 1: Dùng git để tự động tìm thư mục gốc, không phụ thuộc vào vị trí file
+    try:
+        repo_root = run_git_command(["git", "rev-parse", "--show-toplevel"]).strip()
+    except subprocess.CalledProcessError:
+        print("Không thể xác định thư mục gốc của repository.")
+        sys.exit(1)
     os.chdir(repo_root)
     print(f"Đang làm việc tại thư mục: {os.getcwd()}")
 
@@ -93,15 +94,19 @@ def main():
 
     print(f"Bắt đầu kiểm tra xung đột cho các file: {[f.name for _, f in changed_files]}")
 
+    # SỬA LỖI 2: Đếm số file đã kiểm tra thành công, nếu không bằng tổng số file thì thất bại
+    processed_count = 0
+
     for status, path in changed_files:
         print(f"\nĐang kiểm tra file: {path.name} (Trạng thái: {status})")
 
+        # SỬA LỖI 2: Nếu không đọc được file thì coi là lỗi, dừng ngay
         try:
             dev_content = path.read_text()
             dev_ids = extract_rule_ids_from_xml(dev_content)
         except Exception as e:
-            print(f"Không thể đọc file {path.name}: {e}")
-            continue
+            print(f"LỖI: Không thể đọc file {path.name}: {e}")
+            sys.exit(1)  # Thay vì continue, phải exit(1) để chặn PR
 
         # 1. Kiểm tra trùng lặp ID bên trong chính file đó
         duplicates = detect_duplicates(dev_ids)
@@ -111,7 +116,6 @@ def main():
 
         # 2. Kiểm tra xung đột với nhánh main
         if status == "A":
-            # File mới được thêm
             conflicting_ids = set(dev_ids) & set(rule_id_to_files_main.keys())
             if conflicting_ids:
                 print_conflicts(conflicting_ids, rule_id_to_files_main)
@@ -120,10 +124,10 @@ def main():
                 print(f"File mới {path.name} không có xung đột ID.")
 
         elif status == "M":
-            # File bị sửa đổi
             main_ids = get_rule_ids_from_main_version(path)
             if set(dev_ids) == set(main_ids):
                 print(f"File {path.name} được sửa nhưng danh sách Rule ID không thay đổi.")
+                processed_count += 1
                 continue
 
             new_or_changed_ids = set(dev_ids) - set(main_ids)
@@ -134,6 +138,13 @@ def main():
                 sys.exit(1)
             else:
                 print(f"File sửa đổi {path.name} không có xung đột ID.")
+
+        processed_count += 1
+
+    # SỬA LỖI 2: Kiểm tra an toàn cuối cùng
+    if processed_count != len(changed_files):
+        print(f"LỖI: Chỉ kiểm tra được {processed_count}/{len(changed_files)} file.")
+        sys.exit(1)
 
     print("\nTất cả các thay đổi đều vượt qua bài kiểm tra xung đột Rule ID.")
 
