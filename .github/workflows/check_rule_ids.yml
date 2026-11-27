@@ -27,4 +27,4 @@ jobs:
 
       # Cập nhật đường dẫn trỏ tới thư mục scripts
       - name: Run rule ID conflict checker
-        run: python3 scripts/check_rule_ids.py
+        run: python3 .github/scripts/check_rule_ids.py
