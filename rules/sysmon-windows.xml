@@ -2,6 +2,6 @@
 <group name="windows,sysmon,">
   <rule id="100100" level="3">
     <if_sid>61603</if_sid>
-    <description>This is a test rule: Sysmon Event 1 on Windows</description>
+    <description>This rule right here is just for testing ruleset auto update</description>
   </rule>
 </group>
