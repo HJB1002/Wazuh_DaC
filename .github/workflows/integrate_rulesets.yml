@@ -1,0 +1,21 @@
+name: Update Rulesets on SIEM
+on:
+  push:
+    branches: [ "main" ]
+    paths: ["**.xml"]
+  workflow_dispatch:
+
+jobs:
+  DaaC:
+    runs-on: self-hosted
+    steps:
+      - name: Apply modified or new decoders and rules to SIEM
+        run: |
+          sudo bash -c '
+          cd /var/ossec/etc/
+          git pull origin main
+          chown wazuh:wazuh /var/ossec/etc/decoders/* && chmod 660 /var/ossec/etc/decoders/*
+          chown wazuh:wazuh /var/ossec/etc/rules/* && chmod 660 /var/ossec/etc/rules/*
+          systemctl restart wazuh-manager
+          systemctl status wazuh-manager -l --no-pager
+          '
