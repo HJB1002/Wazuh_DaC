@@ -1,6 +1,6 @@
 <!-- Đây là ruleset dành cho các sự kiện sysmon dành cho linux -->
 <group name="windows,sysmon,">
-  <rule id="100111" level="3">
+  <rule id="100101" level="3">
     <if_sid>61603</if_sid>
     <description>At this moment this rule right here is just for checking rule ID collision workflow</description>
   </rule>
