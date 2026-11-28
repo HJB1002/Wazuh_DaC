@@ -4,4 +4,8 @@
     <if_sid>61603</if_sid>
     <description>At this moment this rule right here is just for checking rule ID collision workflow</description>
   </rule>
+   <rule>
+    <if_sid>100101</if_sid>
+    <description>Rule này được tạo để kiểm tra workflow kiểm tra các thành phần cần có trong rule</description>
+  </rule>
 </group>
